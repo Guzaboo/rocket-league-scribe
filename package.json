@@ -1,0 +1,22 @@
+{
+  "name": "rocket-league-scribe",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Guzaboo/rocket-league-scribe.git"
+  },
+  "author": "Khai Hirschi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Guzaboo/rocket-league-scribe/issues"
+  },
+  "homepage": "https://github.com/Guzaboo/rocket-league-scribe#readme",
+  "dependencies": {
+    "websocket": "^1.0.34"
+  }
+}
