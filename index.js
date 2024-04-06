@@ -123,148 +123,254 @@ const WsSubscribers = {
     }
 };
 
-const GAME_LENGTH = 300;
+const LOGGING_LEVEL = 5;
+
+const GAME_LENGTH = 300.0;
+const UNINITIALIZED_PLAYER_NAME = "__uninitialized";
+
+const MAX_X = 4096; // Measured in CM
+const MAX_Y = 5120; // Measured in CM
+const MAX_Z = 2044; // Measured in CM
+const MAX_PITCH = 32767 / 2; // Measured in 16-bit integers with 32767 = pi
+const MAX_ROLL = 32767; // Measured in 16-bit integers with 32767 = pi
+const MAX_YAW = 32767; // Measured in 16-bit integers with 32767 = pi
+const MAX_CAR_SPEED = 2300 * 0.036; // Measured in KPH
+const MAX_BALL_SPEED = 6000 * 0.036;
+const MAX_BOOST = 100;
+
+function getDefaultBall() {
+    return JSON.parse(JSON.stringify({
+        location: {
+            x: 0,
+            y: 0,
+            z: 0,
+        },
+        speed: 0,
+    }));
+}
+
+function getDefaultPlayer() {
+    return JSON.parse(JSON.stringify({
+        name: UNINITIALIZED_PLAYER_NAME,
+        assists: 0,
+        boost: 0,
+        cartouches: 0,
+        demos: 0,
+        goals: 0,
+        location: {
+            x: 0,
+            y: 0,
+            z: 0,
+            pitch: 0,
+            roll: 0,
+            yaw: 0,
+        },
+        saves: 0,
+        score: 0,
+        shots: 0,
+        speed: 0,
+        touches: 0,
+    }));
+}
 
 function getDefaults() {
     return JSON.parse(JSON.stringify({
         timeLeft: GAME_LENGTH,
         timePassed: 0,
+        ball: getDefaultBall(),
         team1: {
             score: 0,
             players: [
-                {
-                    assists: 0,
-                    boost: 0,
-                    demos: 0,
-                    location: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        pitch: 0,
-                        roll: 0,
-                        yaw: 0,
-                    },
-                    saves: 0,
-                    score: 0,
-                    shots: 0,
-                    speed: 0,
-                },
-                {
-                    assists: 0,
-                    boost: 0,
-                    demos: 0,
-                    location: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        pitch: 0,
-                        roll: 0,
-                        yaw: 0,
-                    },
-                    saves: 0,
-                    score: 0,
-                    shots: 0,
-                    speed: 0,
-                },
-                {
-                    assists: 0,
-                    boost: 0,
-                    demos: 0,
-                    location: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        pitch: 0,
-                        roll: 0,
-                        yaw: 0,
-                    },
-                    saves: 0,
-                    score: 0,
-                    shots: 0,
-                    speed: 0,
-                }
-            ]
+                getDefaultPlayer(),
+                getDefaultPlayer(),
+                getDefaultPlayer(),
+            ],
         },
         team2: {
             score: 0,
             players: [
-                {
-                    assists: 0,
-                    boost: 0,
-                    demos: 0,
-                    location: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        pitch: 0,
-                        roll: 0,
-                        yaw: 0,
-                    },
-                    saves: 0,
-                    score: 0,
-                    shots: 0,
-                    speed: 0,
-                },
-                {
-                    assists: 0,
-                    boost: 0,
-                    demos: 0,
-                    location: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        pitch: 0,
-                        roll: 0,
-                        yaw: 0,
-                    },
-                    saves: 0,
-                    score: 0,
-                    shots: 0,
-                    speed: 0,
-                },
-                {
-                    assists: 0,
-                    boost: 0,
-                    demos: 0,
-                    location: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        pitch: 0,
-                        roll: 0,
-                        yaw: 0,
-                    },
-                    saves: 0,
-                    score: 0,
-                    shots: 0,
-                    speed: 0,
-                }
-            ]
+                getDefaultPlayer(),
+                getDefaultPlayer(),
+                getDefaultPlayer(),
+            ],
         },
+        invalidated: false,
     }));
 }
 
 let cachedGameData = getDefaults();
+let timeStep = 0;
+let gameInProgress = false;
+
+function logPlayer(tabs, player) {
+    console.log(`${tabs}{`);
+    console.log(`${tabs}    name: ${player.name},`);
+    console.log(`${tabs}    assists: ${player.assists},`);
+    console.log(`${tabs}    boost: ${player.boost},`);
+    console.log(`${tabs}    cartouches: ${player.cartouches},`);
+    console.log(`${tabs}    demos: ${player.demos},`);
+    console.log(`${tabs}    goals: ${player.goals},`);
+    console.log(`${tabs}    location: {`);
+    console.log(`${tabs}        x: ${player.location.x},`);
+    console.log(`${tabs}        y: ${player.location.y},`);
+    console.log(`${tabs}        z: ${player.location.z},`);
+    console.log(`${tabs}        pitch: ${player.location.pitch},`);
+    console.log(`${tabs}        roll: ${player.location.roll},`);
+    console.log(`${tabs}        yaw: ${player.location.yaw},`);
+    console.log(`${tabs}    },`);
+    console.log(`${tabs}    saves: ${player.saves},`);
+    console.log(`${tabs}    score: ${player.score},`);
+    console.log(`${tabs}    shots: ${player.shots},`);
+    console.log(`${tabs}    speed: ${player.speed},`);
+    console.log(`${tabs}    touches: ${player.touches},`);
+    console.log(`${tabs}}`);
+}
+
+function logData(scoreUpdated) {
+    if (LOGGING_LEVEL < 5) return;
+    console.log();
+    if (5 <= LOGGING_LEVEL) {
+        if (cachedGameData.invalidated) {
+            console.log(`DATA INVALIDATED!`);
+            return;
+        }
+        console.log(`Saved data. (${scoreUpdated ? `goal scored` : `timePassed: ${cachedGameData.timePassed}`})`);
+    }
+    if (LOGGING_LEVEL < 10 && timeStep !== 0) return;
+    console.log(`{`);
+    console.log(`    timeLeft: ${cachedGameData.timeLeft},`);
+    console.log(`    timePassed: ${cachedGameData.timePassed},`);
+    console.log(`    ball: {`);
+    console.log(`        location: {`);
+    console.log(`            x: ${cachedGameData.ball.location.x},`);
+    console.log(`            y: ${cachedGameData.ball.location.y},`);
+    console.log(`            z: ${cachedGameData.ball.location.z},`);
+    console.log(`        },`);
+    console.log(`        speed: ${cachedGameData.ball.speed},`);
+    console.log(`    },`);
+    console.log(`    team1: {`);
+    console.log(`        score: ${cachedGameData.team1.score},`);
+    console.log(`        players: [`);
+    logPlayer("            ", cachedGameData.team1.players[0]);
+    logPlayer("            ", cachedGameData.team1.players[1]);
+    logPlayer("            ", cachedGameData.team1.players[2]);
+    console.log(`        ],`);
+    console.log(`    },`);
+    console.log(`    team2: {`);
+    console.log(`        score: ${cachedGameData.team2.score},`);
+    console.log(`        players: [`);
+    logPlayer("            ", cachedGameData.team2.players[0]);
+    logPlayer("            ", cachedGameData.team2.players[1]);
+    logPlayer("            ", cachedGameData.team2.players[2]);
+    console.log(`        ],`);
+    console.log(`    },`);
+    console.log(`}`);
+}
 
 WsSubscribers.init(49322, false);
+
 WsSubscribers.subscribe("game", "initialized", (data) => {
+    console.log("Resetting the data for a new game...");
     cachedGameData = getDefaults();
+    timeStep = 0;
+    gameInProgress = true;
 });
-WsSubscribers.subscribe("game", "goal_scored", (data) => {
-    console.log(data);
-    if(data.scorer.teamnum === 0) cachedGameData.team1.score++;
-    else cachedGameData.team2.score++;
-    console.log(cachedGameData);
+
+WsSubscribers.subscribe("game", "clock_stopped", (data) => {
+    if (gameInProgress && cachedGameData.timeLeft === 0 && cachedGameData.team1.score != cachedGameData.team2.score) {
+        gameInProgress = false;
+        const winner = cachedGameData.team1.score > cachedGameData.team2.score ? 0 : 1;
+        console.log(`Team ${winner + 1} wins!`);
+    }
 });
-WsSubscribers.subscribe("game", "clock_updated_seconds", (data) => {
-    console.log(cachedGameData);
-});
+
 WsSubscribers.subscribe("game", "update_state", (data) => {
+    if (!gameInProgress) {
+        return;
+    }
     let players = data.players;
     let playerNames = Object.keys(players);
-    if(playerNames.length !== 6) return
-    cachedGameData.timeLeft = data.game.isOT ? 0 : data.game.time_milliseconds
-    cachedGameData.timePassed = GAME_LENGTH - data.game.time_milliseconds + (data.game.isOT ? GAME_LENGTH : 0)
-    cachedGameData.team1_score = data.game.teams["0"].score
-    cachedGameData.team2_score = data.game.teams["1"].score
+    if(playerNames.length !== 6) return;
+    cachedGameData.timeLeft = data.game.isOT ? 0 : data.game.time_milliseconds;
+    cachedGameData.timePassed = GAME_LENGTH - data.game.time_milliseconds + (data.game.isOT ? GAME_LENGTH : 0);
+
+    let scoreUpdated = false;
+    if (cachedGameData.team1.score !== data.game.teams["0"].score
+     || cachedGameData.team2.score !== data.game.teams["1"].score) {
+        scoreUpdated = true;
+    }
+
+    cachedGameData.team1.score = data.game.teams["0"].score;
+    cachedGameData.team2.score = data.game.teams["1"].score;
+
+    // Ball data
+    cachedGameData.ball.location.x = data.game.ball.location.X / MAX_X;
+    cachedGameData.ball.location.y = data.game.ball.location.Y / MAX_Y;
+    cachedGameData.ball.location.z = data.game.ball.location.Z / MAX_Z;
+    cachedGameData.ball.speed = data.game.ball.speed / MAX_BALL_SPEED;
+
+    // Player data
+    playerNames.forEach((name) => {
+        let team;
+        if (data.players[name].team === 0) {
+            team = "team1";
+        } else {
+            team = "team2";
+        }
+        let index = -1;
+        for (let i = 0; i < cachedGameData[team].players.length; i++) {
+            if (cachedGameData[team].players[i].name === name) {
+                index = i;
+                break;
+            }
+        }
+        if (index === -1) {
+            for (let i = 0; i < cachedGameData[team].players.length; i++) {
+                if (cachedGameData[team].players[i].name === UNINITIALIZED_PLAYER_NAME) {
+                    cachedGameData[team].players[i].name = name;
+                    index = i;
+                    break;
+                }
+            }
+        }
+        if (index === -1) {
+            cachedGameData.invalidated = true;
+        } else {
+            cachedGameData[team].players[index].assists = data.players[name].assists;
+            cachedGameData[team].players[index].boost = data.players[name].boost / MAX_BOOST;
+            cachedGameData[team].players[index].cartouches = data.players[name].cartouches;
+            cachedGameData[team].players[index].demos = data.players[name].demos;
+            cachedGameData[team].players[index].goals = data.players[name].goals;
+            if (data.players[name].location !== undefined) {
+                cachedGameData[team].players[index].location.x = data.players[name].location.X / MAX_X;
+                cachedGameData[team].players[index].location.y = data.players[name].location.Y / MAX_Y;
+                cachedGameData[team].players[index].location.z = data.players[name].location.Z / MAX_Z;
+                cachedGameData[team].players[index].location.pitch = data.players[name].location.pitch / MAX_PITCH;
+                cachedGameData[team].players[index].location.roll = data.players[name].location.roll / MAX_ROLL;
+                cachedGameData[team].players[index].location.yaw = data.players[name].location.yaw / MAX_YAW;
+            }
+            cachedGameData[team].players[index].saves = data.players[name].saves;
+            cachedGameData[team].players[index].score = data.players[name].score;
+            cachedGameData[team].players[index].shots = data.players[name].shots;
+            cachedGameData[team].players[index].speed = data.players[name].speed / MAX_CAR_SPEED;
+            cachedGameData[team].players[index].touches = data.players[name].touches;
+
+            // Modify team2 values to mirror team1 values
+            if (team == "team2") {
+                if (data.players[name].location !== undefined) {
+                    cachedGameData[team].players[index].location.x *= -1;
+                    cachedGameData[team].players[index].location.y *= -1;
+                    cachedGameData[team].players[index].location.yaw += 1; // add 180 degrees
+                    if (cachedGameData[team].players[index].location.yaw > 1) {
+                        cachedGameData[team].players[index].location.yaw -= 2; // make sure it is in the range [-1,1]
+                    }
+                }
+            }
+        }
+    });
+
+    if(scoreUpdated || cachedGameData.timePassed > timeStep) {
+        logData(scoreUpdated);
+        if (cachedGameData.timePassed > timeStep) timeStep += 1;
+    }
 });

@@ -1,0 +1,16 @@
+# Rocket League Scribe
+
+## About
+
+Rocket League Scribe is a program written to periodically store snapshots of data from a Rocket League match a user is spectating or a replay they are watching.
+
+## Dependencies
+
+Rocket League Scribe assumes that sos-ws-relay-master is running and outputting to port 49322.
+
+## To run:
+
+1. Run sos-ws-relay-master
+2. Run `node index.js`.
+3. Launch Rocket League.
+4. Start spectating a match or watching a replay.
