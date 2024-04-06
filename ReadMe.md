@@ -11,6 +11,6 @@ Rocket League Scribe assumes that sos-ws-relay-master is running and outputting 
 ## To run:
 
 1. Run sos-ws-relay-master
-2. Run `node index.js`.
+2. Run `npm start`.
 3. Launch Rocket League.
-4. Start spectating a match or watching a replay.
+4. Start spectating a match or watching a replay. When the match or replay finishes, it will write to a file.
