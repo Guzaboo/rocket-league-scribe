@@ -152,8 +152,8 @@ const MAX_PITCH = 32767 / 2; // Measured in 16-bit integers with 32767 = pi
 const MAX_ROLL = 32767; // Measured in 16-bit integers with 32767 = pi
 const MAX_YAW = 32767; // Measured in 16-bit integers with 32767 = pi
 const MAX_CAR_SPEED = 2300 * 0.036; // Measured in KPH
-const MAX_BALL_SPEED = 6000 * 0.036;
-const MAX_BOOST = 100;
+const MAX_BALL_SPEED = 6000 * 0.036; // Measured in KPH
+const MAX_BOOST = 100; // [0,100]
 
 function getDefaultBall() {
     return JSON.parse(JSON.stringify({
@@ -296,27 +296,6 @@ function dataToString(tabs) {
 }
 
 function logPlayer(tabs, player) {
-    // console.log(`${tabs}{`);
-    // console.log(`${tabs}    name: ${player.name},`);
-    // console.log(`${tabs}    assists: ${player.assists},`);
-    // console.log(`${tabs}    boost: ${player.boost},`);
-    // console.log(`${tabs}    cartouches: ${player.cartouches},`);
-    // console.log(`${tabs}    demos: ${player.demos},`);
-    // console.log(`${tabs}    goals: ${player.goals},`);
-    // console.log(`${tabs}    location: {`);
-    // console.log(`${tabs}        x: ${player.location.x},`);
-    // console.log(`${tabs}        y: ${player.location.y},`);
-    // console.log(`${tabs}        z: ${player.location.z},`);
-    // console.log(`${tabs}        pitch: ${player.location.pitch},`);
-    // console.log(`${tabs}        roll: ${player.location.roll},`);
-    // console.log(`${tabs}        yaw: ${player.location.yaw},`);
-    // console.log(`${tabs}    },`);
-    // console.log(`${tabs}    saves: ${player.saves},`);
-    // console.log(`${tabs}    score: ${player.score},`);
-    // console.log(`${tabs}    shots: ${player.shots},`);
-    // console.log(`${tabs}    speed: ${player.speed},`);
-    // console.log(`${tabs}    touches: ${player.touches},`);
-    // console.log(`${tabs}}`);
     console.log(playerToString(tabs, player));
 }
 
@@ -333,34 +312,6 @@ function logData(scoreUpdated) {
         console.log(`Saved data. (${scoreUpdated ? `goal scored` : `timePassed: ${cachedGameData.timePassed}`})`);
     }
     if (LOGGING_LEVEL < 10 && timeStep !== 0) return;
-    // console.log(`{`);
-    // console.log(`    timeLeft: ${cachedGameData.timeLeft},`);
-    // console.log(`    timePassed: ${cachedGameData.timePassed},`);
-    // console.log(`    ball: {`);
-    // console.log(`        location: {`);
-    // console.log(`            x: ${cachedGameData.ball.location.x},`);
-    // console.log(`            y: ${cachedGameData.ball.location.y},`);
-    // console.log(`            z: ${cachedGameData.ball.location.z},`);
-    // console.log(`        },`);
-    // console.log(`        speed: ${cachedGameData.ball.speed},`);
-    // console.log(`    },`);
-    // console.log(`    team1: {`);
-    // console.log(`        score: ${cachedGameData.team1.score},`);
-    // console.log(`        players: [`);
-    // logPlayer("            ", cachedGameData.team1.players[0]);
-    // logPlayer("            ", cachedGameData.team1.players[1]);
-    // logPlayer("            ", cachedGameData.team1.players[2]);
-    // console.log(`        ],`);
-    // console.log(`    },`);
-    // console.log(`    team2: {`);
-    // console.log(`        score: ${cachedGameData.team2.score},`);
-    // console.log(`        players: [`);
-    // logPlayer("            ", cachedGameData.team2.players[0]);
-    // logPlayer("            ", cachedGameData.team2.players[1]);
-    // logPlayer("            ", cachedGameData.team2.players[2]);
-    // console.log(`        ],`);
-    // console.log(`    },`);
-    // console.log(`}`);
     console.log(dataToString(""));
 }
 
@@ -391,7 +342,7 @@ WsSubscribers.subscribe("game", "update_state", (data) => {
     let playerNames = Object.keys(players);
     if(playerNames.length !== 6) return;
     cachedGameData.timeLeft = data.game.isOT ? 0 : data.game.time_milliseconds;
-    cachedGameData.timePassed = GAME_LENGTH - data.game.time_milliseconds + (data.game.isOT ? GAME_LENGTH : 0);
+    cachedGameData.timePassed = data.game.isOT ? (GAME_LENGTH + data.game.time_milliseconds) : (GAME_LENGTH - data.game.time_milliseconds);
 
     let scoreUpdated = false;
     if (cachedGameData.team1.score !== data.game.teams["0"].score
