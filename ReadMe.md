@@ -14,3 +14,7 @@ Rocket League Scribe assumes that sos-ws-relay-master is running and outputting 
 2. Run `npm start`.
 3. Launch Rocket League.
 4. Start spectating a match or watching a replay. When the match or replay finishes, it will write to a file.
+
+## Known issues:
+
+* No data is recorded after the clock reaches 0 and before the ball hits the ground.
