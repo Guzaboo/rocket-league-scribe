@@ -419,8 +419,8 @@ WsSubscribers.subscribe("game", "update_state", (data) => {
         }
     });
 
-    if(scoreUpdated || cachedGameData.timePassed > timeStep) {
+    if(scoreUpdated || cachedGameData.timePassed >= timeStep) {
         logData(scoreUpdated);
-        if (cachedGameData.timePassed > timeStep) timeStep += 1;
+        if (cachedGameData.timePassed >= timeStep) timeStep += 1;
     }
 });
